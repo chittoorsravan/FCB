@@ -3,8 +3,7 @@ name: FCB AttestationHub Server CI/CD
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+
 
 env:
   AWS_REGION: us-east-2 # Change this to your AWS region
