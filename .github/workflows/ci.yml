@@ -134,8 +134,11 @@ jobs:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${{ github.sha }}"
-          sed "s|REPLACE_WITH_IMAGE|$IMAGE_URI|g" fcb-attestationhub-server/k8s/deployment.yaml > fcb-attestationhub-server/k8s/deployment.gen.yaml
-          kubectl apply -f fcb-attestationhub-server/k8s/deployment.gen.yaml
+          # Create the k8s directory if it doesn't exist
+          mkdir -p k8s
+          # Copy the deployment file and substitute the image
+          sed "s|REPLACE_WITH_IMAGE|$IMAGE_URI|g" fcb-attestationhub-server/k8s/deployment.yaml > k8s/deployment.gen.yaml
+          kubectl apply -f k8s/deployment.gen.yaml
           kubectl apply -f fcb-attestationhub-server/k8s/service.yaml
           if [ -f fcb-attestationhub-server/k8s/servicemonitor.yaml ]; then kubectl apply -f fcb-attestationhub-server/k8s/servicemonitor.yaml; fi
 
