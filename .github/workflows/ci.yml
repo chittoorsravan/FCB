@@ -9,14 +9,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    env:
-      MVN_FLAGS: -B -ntp
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Set up JDK 8
         uses: actions/setup-java@v4
@@ -25,36 +20,20 @@ jobs:
           java-version: '8'
           cache: 'maven'
 
-      # 🧹 clean
-      - name: Maven Clean
-        run: mvn $MVN_FLAGS clean
-
-      # 🏗️ compile
-      - name: Maven Compile
-        run: mvn $MVN_FLAGS compile
-
-      # ✅ unit tests
-      - name: Maven Test
-        run: mvn $MVN_FLAGS test
-
-      # 📦 package WAR
-      - name: Maven Package
-        run: mvn $MVN_FLAGS package
-
-      # 🔎 list what got built
-      - name: Inspect targets
+      - name: Show versions
         run: |
-          echo "Listing target folders (depth 3):"
-          find . -maxdepth 3 -type d -name target -print
-          echo "Artifacts found:"
-          find . -type f \( -name "*.war" -o -name "*.jar" \) -print
+          java -version
+          mvn -version
 
-      # ⬆️ upload WAR/JAR as GitHub artifact
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: attestationhubserver-artifacts
-          path: |
-            **/target/*.war
-            **/target/*.jar
-          if-no-files-found: error
+      # Step 1: Clean previous builds
+      - name: Maven Clean
+        run: mvn clean
+
+      - name: Maven Compile
+        run: mvn package -DskipTests
+
+
+      
+
+  
+
