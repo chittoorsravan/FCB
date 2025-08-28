@@ -1,4 +1,4 @@
-name: FCB AttestationHub Server CI
+name: FCB AttestationHub Server CI/CD
 
 on:
   push:
@@ -29,18 +29,32 @@ jobs:
       - name: Maven Clean
         run: mvn clean
 
-      - name: Maven Compile
+      # Step 2: Compile and run tests
+      - name: Maven Compile and Test
+        run: mvn compile test
+
+      # Step 3: Package application (generate WAR file)
+      - name: Maven Package
         run: mvn package -DskipTests
+
+      # Step 4: Verify WAR file exists
+      - name: Verify WAR file
+        run: |
+          ls -la target/
+          if [ -f "target/attestationhubserver.war" ]; then
+            echo "✅ WAR file generated successfully"
+            ls -lh target/attestationhubserver.war
+          else
+            echo "❌ WAR file not found"
+            exit 1
+          fi
+
+      # Step 5: Upload build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-         name: attestationhubserver-artifacts
-         path: |
-          **/target/*.war
-          **/target/*.jarz
+          name: attestationhubserver-war
+          path: target/attestationhubserver.war
+          retention-days: 30
 
-
-      
-
-  
-
+     
