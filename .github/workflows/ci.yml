@@ -25,55 +25,23 @@ jobs:
           java-version: '8'
           cache: 'maven'
 
-      # 🔎 Locate the real project dir (first pom with packaging != pom)
-      - name: Detect project directory
-        id: detect
-        shell: bash
-        run: |
-          set -e
-          # list poms
-          echo "All pom.xml files:" 
-          find . -name pom.xml -printf '%p\n' | sed 's|^./||'
-          # pick a pom that actually builds an artifact (packaging != pom)
-          PROJECT_DIR="$( \
-            for P in $(find . -name pom.xml -printf '%p\n'); do
-              PKG=$(mvn -q -f "$P" -DforceStdout help:evaluate -Dexpression=project.packaging || true)
-              if [ "$PKG" != "pom" ] && [ -n "$PKG" ]; then
-                dirname "$P"
-                break
-              fi
-            done )"
-          if [ -z "$PROJECT_DIR" ]; then
-            # fallback to repo root
-            PROJECT_DIR="."
-          fi
-          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-          echo "Using project_dir: $PROJECT_DIR"
-          # Show artifact coordinates
-          mvn $MVN_FLAGS -f "$PROJECT_DIR/pom.xml" \
-            -DforceStdout help:evaluate -Dexpression=project.artifactId | sed -n '1p' || true
-          mvn $MVN_FLAGS -f "$PROJECT_DIR/pom.xml" \
-            -DforceStdout help:evaluate -Dexpression=project.packaging | sed -n '1p' || true
-          mvn $MVN_FLAGS -f "$PROJECT_DIR/pom.xml" \
-            -DforceStdout help:evaluate -Dexpression=project.version | sed -n '1p' || true
-
       # 🧹 clean
       - name: Maven Clean
-        run: mvn $MVN_FLAGS -f "${{ steps.detect.outputs.project_dir }}/pom.xml" clean
+        run: mvn $MVN_FLAGS clean
 
       # 🏗️ compile
       - name: Maven Compile
-        run: mvn $MVN_FLAGS -f "${{ steps.detect.outputs.project_dir }}/pom.xml" compile
+        run: mvn $MVN_FLAGS compile
 
       # ✅ unit tests
       - name: Maven Test
-        run: mvn $MVN_FLAGS -f "${{ steps.detect.outputs.project_dir }}/pom.xml" test
+        run: mvn $MVN_FLAGS test
 
-      # 📦 package (produces target/*.war or *.jar)
+      # 📦 package WAR
       - name: Maven Package
-        run: mvn $MVN_FLAGS -f "${{ steps.detect.outputs.project_dir }}/pom.xml" package
+        run: mvn $MVN_FLAGS package
 
-      # 🔎 show any target dirs
+      # 🔎 list what got built
       - name: Inspect targets
         run: |
           echo "Listing target folders (depth 3):"
@@ -81,12 +49,12 @@ jobs:
           echo "Artifacts found:"
           find . -type f \( -name "*.war" -o -name "*.jar" \) -print
 
-      # ⬆️ upload WAR/JAR from anywhere in the repo (handles submodules)
+      # ⬆️ upload WAR/JAR as GitHub artifact
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: maven-artifacts
+          name: attestationhubserver-artifacts
           path: |
             **/target/*.war
             **/target/*.jar
-          if-no-files-found: warn
+          if-no-files-found: error
