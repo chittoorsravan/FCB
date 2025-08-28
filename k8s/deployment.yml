@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attestationhubserver
+  labels:
+    app: attestationhubserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attestationhubserver
+  template:
+    metadata:
+      labels:
+        app: attestationhubserver
+    spec:
+      containers:
+        - name: attestationhubserver
+          image: REPLACE_WITH_IMAGE
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9090
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=75.0"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9090
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9090
+            initialDelaySeconds: 60
+            periodSeconds: 30
+
