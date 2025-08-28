@@ -32,9 +32,4 @@ jobs :
         run: mvn test
       - name : Integration test 
         run: mvn package
-      - name : Build Docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile
-          tags: ${{ secrets.DOCKER_USERNAME }}/fcb-attestationhub-server:latest
+     
