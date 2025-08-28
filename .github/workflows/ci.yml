@@ -133,11 +133,11 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
-          sed "s|REPLACE_WITH_IMAGE|$IMAGE_URI|g" k8s/deployment.yaml > k8s/deployment.gen.yaml
-          kubectl apply -f k8s/deployment.gen.yaml
-          kubectl apply -f k8s/service.yaml
-          if [ -f k8s/servicemonitor.yaml ]; then kubectl apply -f k8s/servicemonitor.yaml; fi
+          IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${{ github.sha }}"
+          sed "s|REPLACE_WITH_IMAGE|$IMAGE_URI|g" fcb-attestationhub-server/k8s/deployment.yaml > fcb-attestationhub-server/k8s/deployment.gen.yaml
+          kubectl apply -f fcb-attestationhub-server/k8s/deployment.gen.yaml
+          kubectl apply -f fcb-attestationhub-server/k8s/service.yaml
+          if [ -f fcb-attestationhub-server/k8s/servicemonitor.yaml ]; then kubectl apply -f fcb-attestationhub-server/k8s/servicemonitor.yaml; fi
 
       - name: Wait for rollout
         run: |
