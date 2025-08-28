@@ -27,18 +27,11 @@ jobs:
 
       # Step 1: Clean previous builds
       - name: Maven Clean
-        run: mvn -B -ntp clean
-
-      # Step 2: Compile (only compiles main code, not tests yet)
-      - name: Maven Compile
-        run: mvn -B -ntp compile
+        run: mvn package compile -DskipTests
 
       # Step 3: Run Unit Tests (Surefire plugin)
       - name: Maven Test
-        run: mvn -B -ntp test
+        run: mvn test
 
-      # Step 4: Package into WAR (creates target/attestationhubserver.war)
-      - name: Maven Package
-        run: mvn -B -ntp package
-
+ 
     
