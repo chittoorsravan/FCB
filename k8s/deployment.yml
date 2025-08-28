@@ -2,10 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: attestationhubserver
-  labels:
-    app: attestationhubserver
+  namespace: default   # change if you use a different ns
+labels:
+  app: attestationhubserver
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: attestationhubserver
@@ -16,23 +17,21 @@ spec:
     spec:
       containers:
         - name: attestationhubserver
-          image: REPLACE_WITH_IMAGE
+          image: 211125412565.dkr.ecr.us-east-2.amazonaws.com/fcb-attestationhub-server:<git-sha># 
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 9090
-          env:
-            - name: JAVA_TOOL_OPTIONS
-              value: "-XX:MaxRAMPercentage=75.0"
+            - name: http
+              containerPort: 9090
+          # Optional health checks (adjust paths if you have actuator/health):
           readinessProbe:
             httpGet:
-              path: /actuator/health
-              port: 9090
-            initialDelaySeconds: 30
-            periodSeconds: 15
+              path: /attestationhubserver/
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /actuator/health
-              port: 9090
-            initialDelaySeconds: 60
-            periodSeconds: 30
-
+              path: /attestationhubserver/
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
