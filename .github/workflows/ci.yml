@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: us-east-2 # Change this to your AWS region
   ECR_REPOSITORY: fcb-attestationhub-server  # Change this to your ECR repository name
-  EKS_CLUSTER_NAME: fcb-eks-cluster   # Change to your EKS cluster name
+  EKS_CLUSTER_NAME: your-eks-cluster-name  # Change to your EKS cluster name
 
 jobs:
   build-test:
@@ -101,49 +101,3 @@ jobs:
           echo "Image pushed to ECR successfully"
           echo "Image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "Latest: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
-
-  deploy-eks:
-    needs: [ docker-build-push ]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'v1.29.0'
-
-      - name: Login to Amazon ECR (for registry value)
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Update kubeconfig for EKS
-        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
-
-      - name: Substitute image and apply manifests
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${{ github.sha }}"
-          # Create the k8s directory if it doesn't exist
-          mkdir -p k8s
-          # Copy the deployment file and substitute the image
-          sed "s|REPLACE_WITH_IMAGE|$IMAGE_URI|g" fcb-attestationhub-server/k8s/deployment.yaml > k8s/deployment.gen.yaml
-          kubectl apply -f k8s/deployment.gen.yaml
-          kubectl apply -f fcb-attestationhub-server/k8s/service.yaml
-          if [ -f fcb-attestationhub-server/k8s/servicemonitor.yaml ]; then kubectl apply -f fcb-attestationhub-server/k8s/servicemonitor.yaml; fi
-
-      - name: Wait for rollout
-        run: |
-          kubectl rollout status deployment/attestationhubserver --timeout=180s
-          kubectl get pods -o wide
-     
