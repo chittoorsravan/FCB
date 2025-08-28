@@ -1,0 +1,40 @@
+name : FCB AttestationHub Server CI
+
+on :
+  push : 
+    branches : 
+    - main 
+jobs :
+  build :
+    runs-on : ubuntu-latest
+    steps :
+      - name : Code Checkout 
+        uses : actions/checkout@v3
+      - name : Install JDK 
+        uses : actions/setup-java@v3
+        with :
+          java-version : '1.8'
+          distribution : 'temurin'
+      - name: Install Maven
+        run: sudo apt update && sudo apt install maven -y
+      - name: Verify Java & Maven
+        run: |
+          java -version
+          mvn -version
+      - name: Prepare /data directory
+        run: |
+          sudo mkdir -p /data
+          sudo chown "$USER":"$USER" /data
+          sudo chmod 775 /data
+      - name : Build with Maven
+        run: mvn clean compile 
+      - name : unit test 
+        run: mvn test
+      - name : Integration test 
+        run: mvn package
+      - name : Build Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          tags: ${{ secrets.DOCKER_USERNAME }}/fcb-attestationhub-server:latest
