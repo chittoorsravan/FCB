@@ -137,8 +137,8 @@ jobs:
           echo "=== Describe Deployment ==="
           kubectl describe deploy/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} || true
           P=$(kubectl get pods -n ${K8S_NAMESPACE} -l app=${APP_DEPLOYMENT} -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-          [ -n "$P" ] && kubectl describe pod $P -n ${K8S_NAMESPACE} || true
-          [ -n "$P" ] && kubectl logs $P -n ${K8S_NAMESPACE} --tail=200 || true
+          [ -n "$P" ] && kubectl describe pod "$P" -n ${K8S_NAMESPACE} || true
+          [ -n "$P" ] && kubectl logs "$P" -n ${K8S_NAMESPACE} --tail=200 || true
 
       - name: Show app Ingress URL
         run: |
