@@ -8,7 +8,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate            # avoid PVC mount conflict during rollout
+    type: Recreate  # avoids PVC contention on rollout
   selector:
     matchLabels:
       app: attestationhubserver
@@ -18,7 +18,7 @@ spec:
         app: attestationhubserver
     spec:
       securityContext:
-        fsGroup: 1000         # ensure container can write to /data PVC
+        fsGroup: 1000            # write access to /data
       terminationGracePeriodSeconds: 30
       containers:
         - name: attestationhubserver
@@ -28,16 +28,16 @@ spec:
             - name: http
               containerPort: 9090
 
-          # Give Spring Boot time to start before readiness/liveness matter
+          # Boot warm-up
           startupProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
               port: http
-            failureThreshold: 60      # up to ~5 minutes
+            failureThreshold: 60
             periodSeconds: 5
             timeoutSeconds: 2
 
-          # Mark Ready as soon as port 9090 is listening (least brittle)
+          # Ready when port is listening
           readinessProbe:
             tcpSocket:
               port: http
@@ -46,7 +46,7 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 6
 
-          # True HTTP liveness, but only after warm-up
+          # After warm-up, check HTTP
           livenessProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
