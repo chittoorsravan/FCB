@@ -3,10 +3,12 @@ kind: Deployment
 metadata:
   name: attestationhubserver
   namespace: attestationhub
+  labels:
+    app: attestationhubserver
 spec:
   replicas: 1
   strategy:
-    type: Recreate           # keep this to avoid PVC deadlock
+    type: Recreate            # avoid PVC mount conflict during rollout
   selector:
     matchLabels:
       app: attestationhubserver
@@ -16,7 +18,7 @@ spec:
         app: attestationhubserver
     spec:
       securityContext:
-        fsGroup: 1000
+        fsGroup: 1000         # ensure container can write to /data PVC
       terminationGracePeriodSeconds: 30
       containers:
         - name: attestationhubserver
@@ -26,15 +28,16 @@ spec:
             - name: http
               containerPort: 9090
 
-          # Give the app time to boot BEFORE readiness/liveness matter
+          # Give Spring Boot time to start before readiness/liveness matter
           startupProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
               port: http
-            failureThreshold: 60      # 60 * 5s = 5 minutes max boot time
+            failureThreshold: 60      # up to ~5 minutes
             periodSeconds: 5
+            timeoutSeconds: 2
 
-          # Use a simple TCP readiness (becomes ready as soon as port is listening)
+          # Mark Ready as soon as port 9090 is listening (least brittle)
           readinessProbe:
             tcpSocket:
               port: http
@@ -43,7 +46,7 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 6
 
-          # Keep an HTTP liveness but start later
+          # True HTTP liveness, but only after warm-up
           livenessProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
