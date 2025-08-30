@@ -1,15 +1,18 @@
-elasticsearchHosts: "http://elasticsearch-master.logging.svc.cluster.local:9200"
-ingress:
-  enabled: true
-  className: alb
+service:
+  type: LoadBalancer
   annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-    alb.ingress.kubernetes.io/group.name: attestationhub
-  path: /kibana
-  pathType: Prefix
-  hosts: []
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+
+# Point Kibana at Elasticsearch
+env:
+  ELASTICSEARCH_HOSTS: "http://elasticsearch-master:9200"
+
 resources:
-  requests: { cpu: "200m", memory: "512Mi" }
-  limits:   { cpu: "500m", memory: "1Gi" }
+  requests:
+    cpu: "200m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "1Gi"
