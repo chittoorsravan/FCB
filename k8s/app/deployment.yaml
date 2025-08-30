@@ -3,14 +3,23 @@ kind: Deployment
 metadata:
   name: attestationhubserver
   namespace: attestationhub
-  labels: { app: attestationhubserver }
+  labels:
+    app: attestationhubserver
 spec:
   replicas: 1
-  selector: { matchLabels: { app: attestationhubserver } }
+  strategy:
+    type: Recreate                     # <<< important: avoid PVC deadlock
+  selector:
+    matchLabels:
+      app: attestationhubserver
   template:
     metadata:
-      labels: { app: attestationhubserver }
+      labels:
+        app: attestationhubserver
     spec:
+      securityContext:
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 30
       containers:
         - name: attestationhubserver
           image: 211125412565.dkr.ecr.us-east-2.amazonaws.com/fcb-attestationhub-server:latest
@@ -18,18 +27,27 @@ spec:
           ports:
             - name: http
               containerPort: 9090
+          startupProbe:
+            httpGet:
+              path: /attestationhubserver/swagger-ui/index.html
+              port: http
+            failureThreshold: 60
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
               port: http
-            initialDelaySeconds: 20
+            initialDelaySeconds: 60
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
               port: http
-            initialDelaySeconds: 40
+            initialDelaySeconds: 120
             periodSeconds: 20
+            failureThreshold: 5
           volumeMounts:
             - name: data
               mountPath: /data
