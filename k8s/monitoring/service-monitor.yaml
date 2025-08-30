@@ -1,16 +1,15 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: attestationhubserver-sm
+  name: attestationhubserver
   namespace: monitoring
-  labels: { release: kps }
 spec:
+  namespaceSelector:
+    matchNames: [ "attestationhub" ]
   selector:
     matchLabels:
       app: attestationhubserver
-  namespaceSelector:
-    matchNames: [ "attestationhub" ]
   endpoints:
     - port: http
       path: /actuator/prometheus
-      interval: 15s
+      interval: 30s
