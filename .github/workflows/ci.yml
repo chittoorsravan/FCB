@@ -60,9 +60,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: login-ecr
@@ -95,14 +95,12 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
 
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
@@ -111,12 +109,19 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Apply namespaces and PVC
+      - name: Apply namespaces
+        run: kubectl apply -f k8s/namespaces.yaml
+
+      # EBS CSI must be installed in the EKS console (one-time). We still apply SC here.
+      - name: Apply StorageClass (gp3)
+        run: kubectl apply -f k8s/storage/sc-gp3.yaml
+
+      - name: Recreate PVC (bind to gp3)
         run: |
-          kubectl apply -f k8s/namespaces.yaml
+          kubectl delete pvc attestationhub-data -n ${K8S_NAMESPACE} --ignore-not-found
           kubectl apply -f k8s/app/pvc.yaml
 
-      - name: Patch image and deploy app
+      - name: Patch image and deploy app (Deployment + Service/NLB)
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
@@ -125,7 +130,6 @@ jobs:
           sed -i -E "s|(^[[:space:]]*image:[[:space:]]*).*$|\1${IMAGE_URI}|g" k8s/app/deployment.yaml
           kubectl apply -f k8s/app/deployment.yaml
           kubectl apply -f k8s/app/service.yaml
-          kubectl apply -f k8s/app/ingress.yaml
           kubectl rollout status deployment/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} --timeout=8m
 
       - name: On failure dump diagnostics
@@ -141,10 +145,11 @@ jobs:
           [ -n "$P" ] && kubectl describe pod "$P" -n ${K8S_NAMESPACE} || true
           [ -n "$P" ] && kubectl logs "$P" -n ${K8S_NAMESPACE} --tail=200 || true
 
-      - name: Show app Ingress URL
+      - name: Show App NLB DNS
         run: |
-          echo "App Ingress:"
-          kubectl get ing attestationhubserver-ing -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          echo "App Service (NLB) DNS:"
+          kubectl get svc attestationhubserver-svc -n ${K8S_NAMESPACE} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
           echo "Open: http://<above-host>/attestationhubserver/swagger-ui/index.html"
 
   deploy-observability:
@@ -156,9 +161,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
@@ -177,12 +182,15 @@ jobs:
 
       - name: Install kube-prometheus-stack
         run: |
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
           helm upgrade --install kps prometheus-community/kube-prometheus-stack \
             --namespace monitoring -f k8s/monitoring/kps-values.yaml
-          kubectl apply -f k8s/monitoring/service-monitor.yaml || true
+          # Optional app metrics (if /actuator/prometheus exists)
+          if [ -f k8s/monitoring/service-monitor.yaml ]; then kubectl apply -f k8s/monitoring/service-monitor.yaml; fi
 
       - name: Install Elasticsearch, Kibana, Fluent Bit
         run: |
+          kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -
           helm upgrade --install elasticsearch elastic/elasticsearch \
             --namespace logging -f k8s/logging/es-values.yaml
           helm upgrade --install kibana elastic/kibana \
@@ -190,13 +198,12 @@ jobs:
           helm upgrade --install fluent-bit fluent/fluent-bit \
             --namespace logging -f k8s/logging/fb-values.yaml
 
-      - name: Show Observability URLs
+      - name: Show Observability NLB DNS
         run: |
-          echo "Grafana Ingress:"
-          kubectl get ing kps-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
-          echo "Prometheus Ingress:"
-          kubectl get ing kps-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Prometheus ingress not enabled"
-          echo
-          echo "Kibana Ingress:"
-          kubectl get ing kibana-kibana -n logging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          echo "Grafana:"
+          kubectl get svc kps-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          echo "Prometheus:"
+          kubectl get svc kps-kube-prometheus-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          echo "Kibana:"
+          kubectl get svc kibana-kibana -n logging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
           echo "Grafana login: admin / ChangeMe123!"
