@@ -4,13 +4,13 @@ metadata:
   name: attestationhubserver-ing
   namespace: attestationhub
   annotations:
-    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-    alb.ingress.kubernetes.io/healthcheck-path: /attestationhubserver/swagger-ui/index.html
+    alb.ingress.kubernetes.io/healthcheck-path: /attestationhubserver   # <— was swagger-ui
     alb.ingress.kubernetes.io/group.name: attestationhub
 spec:
+  ingressClassName: alb
   rules:
     - http:
         paths:
