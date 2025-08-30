@@ -72,7 +72,6 @@ jobs:
         run: |
           aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
           aws ecr create-repository --repository-name "$ECR_REPOSITORY"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -114,7 +113,6 @@ jobs:
         run: |
           kubectl apply -f k8s/namespaces.yaml
           kubectl apply -f k8s/app/pvc.yaml
-
       - name: Patch image and deploy app
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -126,7 +124,6 @@ jobs:
           kubectl apply -f k8s/app/service.yaml
           kubectl apply -f k8s/app/ingress.yaml
           kubectl rollout status deployment/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} --timeout=8m
-
       - name: On failure: dump diagnostics
         if: failure()
         run: |
@@ -139,7 +136,6 @@ jobs:
           P=$(kubectl get pods -n ${K8S_NAMESPACE} -l app=${APP_DEPLOYMENT} -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
           [ -n "$P" ] && kubectl describe pod "$P" -n ${K8S_NAMESPACE} || true
           [ -n "$P" ] && kubectl logs "$P" -n ${K8S_NAMESPACE} --tail=200 || true
-
       - name: Show app Ingress URL
         run: |
           echo "App Ingress:"
@@ -173,14 +169,12 @@ jobs:
           helm repo add elastic https://helm.elastic.co
           helm repo add fluent https://fluent.github.io/helm-charts
           helm repo update
-
       - name: Install kube-prometheus-stack (Prom + Grafana)
         run: |
           helm upgrade --install kps prometheus-community/kube-prometheus-stack \
             --namespace monitoring -f k8s/monitoring/kps-values.yaml
           # Optional: scrape your app if you expose /actuator/prometheus
           kubectl apply -f k8s/monitoring/service-monitor.yaml || true
-
       - name: Install Elasticsearch, Kibana, Fluent Bit
         run: |
           helm upgrade --install elasticsearch elastic/elasticsearch \
@@ -189,7 +183,6 @@ jobs:
             --namespace logging -f k8s/logging/kibana-values.yaml
           helm upgrade --install fluent-bit fluent/fluent-bit \
             --namespace logging -f k8s/logging/fb-values.yaml
-
       - name: Show Observability URLs
         run: |
           echo "Grafana Ingress:"
