@@ -180,7 +180,7 @@ jobs:
           helm repo add fluent https://fluent.github.io/helm-charts
           helm repo update
 
-      - name: Install kube-prometheus-stack
+      - name: Install kube-prometheus stack
         run: |
           kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
           helm upgrade --install kps prometheus-community/kube-prometheus-stack \
