@@ -194,10 +194,6 @@ jobs:
           echo "Grafana Ingress:"
           kubectl get ing kps-grafana -n monitoring \
             -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
-          echo "Prometheus Ingress:"
-          kubectl get ing kps-prometheus -n monitoring \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Prometheus ingress not enabled"
-          echo
           echo "Kibana Ingress:"
           kubectl get ing kibana-kibana -n logging \
             -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
