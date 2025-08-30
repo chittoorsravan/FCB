@@ -3,8 +3,6 @@ name: FCB AttestationHub Server CI/CD
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
-
 env:
   AWS_REGION: us-east-2
   ECR_REPOSITORY: fcb-attestationhub-server
