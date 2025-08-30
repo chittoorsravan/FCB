@@ -3,12 +3,10 @@ kind: Deployment
 metadata:
   name: attestationhubserver
   namespace: attestationhub
-  labels:
-    app: attestationhubserver
 spec:
   replicas: 1
   strategy:
-    type: Recreate                     # <<< important: avoid PVC deadlock
+    type: Recreate           # keep this to avoid PVC deadlock
   selector:
     matchLabels:
       app: attestationhubserver
@@ -27,27 +25,34 @@ spec:
           ports:
             - name: http
               containerPort: 9090
+
+          # Give the app time to boot BEFORE readiness/liveness matter
           startupProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
               port: http
-            failureThreshold: 60
+            failureThreshold: 60      # 60 * 5s = 5 minutes max boot time
             periodSeconds: 5
+
+          # Use a simple TCP readiness (becomes ready as soon as port is listening)
           readinessProbe:
-            httpGet:
-              path: /attestationhubserver/swagger-ui/index.html
+            tcpSocket:
               port: http
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 30
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 6
+
+          # Keep an HTTP liveness but start later
           livenessProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
               port: http
             initialDelaySeconds: 120
             periodSeconds: 20
+            timeoutSeconds: 2
             failureThreshold: 5
+
           volumeMounts:
             - name: data
               mountPath: /data
