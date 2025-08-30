@@ -1,0 +1,28 @@
+grafana:
+  adminPassword: "ChangeMe123!"   # change after first login
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: gp3
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+      alb.ingress.kubernetes.io/group.name: attestationhub
+    path: /grafana
+    pathType: Prefix
+    hosts: []   # path-based on same ALB
+
+prometheus:
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
