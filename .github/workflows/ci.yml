@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: "8"
           cache: maven
       - name: Maven Build (skip tests for speed)
         run: mvn -B -ntp clean package -DskipTests
@@ -60,9 +60,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: login-ecr
@@ -95,13 +95,14 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup kubectl & Helm
+      - name: Setup kubectl
         uses: azure/setup-kubectl@v4
-      - uses: azure/setup-helm@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
 
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
@@ -110,7 +111,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Apply namespaces & PVC
+      - name: Apply namespaces and PVC
         run: |
           kubectl apply -f k8s/namespaces.yaml
           kubectl apply -f k8s/app/pvc.yaml
@@ -127,7 +128,7 @@ jobs:
           kubectl apply -f k8s/app/ingress.yaml
           kubectl rollout status deployment/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} --timeout=8m
 
-      - name: On failure: dump diagnostics
+      - name: On failure dump diagnostics
         if: ${{ failure() }}
         run: |
           echo "=== Pods ==="
@@ -143,8 +144,7 @@ jobs:
       - name: Show app Ingress URL
         run: |
           echo "App Ingress:"
-          kubectl get ing attestationhubserver-ing -n ${K8S_NAMESPACE} \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          kubectl get ing attestationhubserver-ing -n ${K8S_NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
           echo "Open: http://<above-host>/attestationhubserver/swagger-ui/index.html"
 
   deploy-observability:
@@ -156,13 +156,14 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup kubectl & Helm
+      - name: Setup kubectl
         uses: azure/setup-kubectl@v4
-      - uses: azure/setup-helm@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
 
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
@@ -174,7 +175,7 @@ jobs:
           helm repo add fluent https://fluent.github.io/helm-charts
           helm repo update
 
-      - name: Install kube-prometheus-stack (Prom + Grafana)
+      - name: Install kube-prometheus-stack
         run: |
           helm upgrade --install kps prometheus-community/kube-prometheus-stack \
             --namespace monitoring -f k8s/monitoring/kps-values.yaml
@@ -192,9 +193,10 @@ jobs:
       - name: Show Observability URLs
         run: |
           echo "Grafana Ingress:"
-          kubectl get ing kps-grafana -n monitoring \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          kubectl get ing kps-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          echo "Prometheus Ingress:"
+          kubectl get ing kps-prometheus -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Prometheus ingress not enabled"
+          echo
           echo "Kibana Ingress:"
-          kubectl get ing kibana-kibana -n logging \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+          kubectl get ing kibana-kibana -n logging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
           echo "Grafana login: admin / ChangeMe123!"
