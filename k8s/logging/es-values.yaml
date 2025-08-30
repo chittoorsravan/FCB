@@ -1,0 +1,18 @@
+replicas: 1
+minimumMasterNodes: 1
+esJavaOpts: "-Xms1g -Xmx1g"
+persistence:
+  enabled: true
+  size: 50Gi
+  storageClass: gp3
+volumeClaimTemplate:
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: gp3
+resources:
+  requests: { cpu: "500m", memory: "2Gi" }
+  limits:   { cpu: "1",    memory: "4Gi" }
+esConfig:
+  elasticsearch.yml: |
+    xpack.security.enabled: false   # enable auth for production
