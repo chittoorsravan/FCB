@@ -1,8 +1,8 @@
 name: FCB AttestationHub Server CI/CD
 
 on:
-  push:
-    branches: [ "main" ]
+  pull:
+    branches: [ "v1.1" ]
 
 env:
   AWS_REGION: us-east-2
