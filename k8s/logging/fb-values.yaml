@@ -1,24 +1,13 @@
-rbac:
-  create: true
-
-serviceAccount:
-  create: true
-
-# Send to Elasticsearch in the logging namespace
 backend:
   type: es
   es:
     host: elasticsearch-master.logging.svc.cluster.local
     port: 9200
-    index: kubernetes
-    logstash_prefix: kubernetes
-    replace_dots: true
-    http_user: ""   # add if securing ES
-    http_passwd: "" # add if securing ES
-    tls: false
-
-# Default input + k8s filter are enabled by the chart
+    index: fluentbit
 resources:
   requests:
-    cpu: 50m
-    memory: 128Mi
+    cpu: "100m"
+    memory: "200Mi"
+  limits:
+    cpu: "500m"
+    memory: "500Mi"
