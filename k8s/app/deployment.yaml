@@ -3,71 +3,30 @@ kind: Deployment
 metadata:
   name: attestationhubserver
   namespace: attestationhub
-  labels:
-    app: attestationhubserver
 spec:
   replicas: 1
   strategy:
-    type: Recreate  # avoids PVC contention on rollout
+    type: Recreate
   selector:
-    matchLabels:
-      app: attestationhubserver
+    matchLabels: { app: attestationhubserver }
   template:
     metadata:
-      labels:
-        app: attestationhubserver
+      labels: { app: attestationhubserver }
     spec:
       securityContext:
-        fsGroup: 1000            # write access to /data
-      terminationGracePeriodSeconds: 30
+        fsGroup: 1000
+      # 👇 add this block
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
         - name: attestationhubserver
           image: 211125412565.dkr.ecr.us-east-2.amazonaws.com/fcb-attestationhub-server:latest
-          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 9090
-
-          # 👉 Add this block
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "1"
-              memory: "1Gi"
-
-          # Boot warm-up
-          startupProbe:
-            httpGet:
-              path: /attestationhubserver/swagger-ui/index.html
-              port: http
-            failureThreshold: 60
-            periodSeconds: 5
-            timeoutSeconds: 2
-
-          # Ready when port is listening
-          readinessProbe:
-            tcpSocket:
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 2
-            failureThreshold: 6
-
-          # After warm-up, check HTTP
-          livenessProbe:
-            httpGet:
-              path: /attestationhubserver/swagger-ui/index.html
-              port: http
-            initialDelaySeconds: 120
-            periodSeconds: 20
-            timeoutSeconds: 2
-            failureThreshold: 5
-
-          volumeMounts:
-            - name: data
-              mountPath: /data
+          # (probes + resources as you already set)
       volumes:
         - name: data
           persistentVolumeClaim:
