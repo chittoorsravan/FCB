@@ -9,7 +9,6 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
-    # Optional: use HTTP health checks at NLB
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "traffic-port"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/attestationhubserver/"
