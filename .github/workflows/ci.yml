@@ -112,7 +112,7 @@ jobs:
       - name: Apply namespaces
         run: kubectl apply -f k8s/namespaces.yaml
 
-      # EBS CSI must be installed in the EKS console (one-time). We still apply SC here.
+      # EBS CSI is an EKS add-on. We still apply SC in repo.
       - name: Apply StorageClass (gp3)
         run: kubectl apply -f k8s/storage/sc-gp3.yaml
 
@@ -121,16 +121,25 @@ jobs:
           kubectl delete pvc attestationhub-data -n ${K8S_NAMESPACE} --ignore-not-found
           kubectl apply -f k8s/app/pvc.yaml
 
-      - name: Patch image and deploy app (Deployment + Service/NLB)
+      - name: Patch image and apply Deployment/Service
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           echo "Deploying image: $IMAGE_URI"
           sed -i -E "s|(^[[:space:]]*image:[[:space:]]*).*$|\1${IMAGE_URI}|g" k8s/app/deployment.yaml
-          echo "------- done pulling image------"
           kubectl apply -f k8s/app/deployment.yaml
           kubectl apply -f k8s/app/service.yaml
+
+      # === NEW: wait up to 3 minutes for the PVC to be Bound ===
+      - name: Wait for PVC to bind (3m)
+        run: |
+          echo "Waiting for PVC attestationhub-data to be Bound (timeout 3m)..."
+          kubectl -n ${K8S_NAMESPACE} wait pvc/attestationhub-data --for=condition=Bound --timeout=3m
+          echo "PVC is Bound."
+
+      - name: Wait for deployment rollout
+        run: |
           kubectl rollout status deployment/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} --timeout=8m
 
       - name: On failure dump diagnostics
