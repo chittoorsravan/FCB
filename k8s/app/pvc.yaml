@@ -4,7 +4,8 @@ metadata:
   name: attestationhub-data
   namespace: attestationhub
 spec:
-  accessModes: [ "ReadWriteOnce" ]
+  accessModes:
+    - ReadWriteOnce
   storageClassName: gp3
   resources:
     requests:
