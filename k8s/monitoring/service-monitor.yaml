@@ -1,14 +1,14 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: attestationhubserver
+  name: attestationhubserver-sm
   namespace: monitoring
 spec:
-  namespaceSelector:
-    matchNames: [ "attestationhub" ]
   selector:
     matchLabels:
       app: attestationhubserver
+  namespaceSelector:
+    matchNames: ["attestationhub"]
   endpoints:
     - port: http
       path: /actuator/prometheus
