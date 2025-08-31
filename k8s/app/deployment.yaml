@@ -31,6 +31,7 @@ spec:
           ports:
             - name: http
               containerPort: 9090
+
           resources:
             requests:
               cpu: "250m"
@@ -38,6 +39,7 @@ spec:
             limits:
               cpu: "1"
               memory: "1Gi"
+
           startupProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
@@ -45,6 +47,7 @@ spec:
             failureThreshold: 60
             periodSeconds: 5
             timeoutSeconds: 2
+
           readinessProbe:
             tcpSocket:
               port: http
@@ -52,6 +55,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 6
+
           livenessProbe:
             httpGet:
               path: /attestationhubserver/swagger-ui/index.html
@@ -60,9 +64,11 @@ spec:
             periodSeconds: 20
             timeoutSeconds: 2
             failureThreshold: 5
+
           volumeMounts:
             - name: data
               mountPath: /data
+
       volumes:
         - name: data
           persistentVolumeClaim:
