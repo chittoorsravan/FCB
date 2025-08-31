@@ -128,6 +128,7 @@ jobs:
           IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           echo "Deploying image: $IMAGE_URI"
           sed -i -E "s|(^[[:space:]]*image:[[:space:]]*).*$|\1${IMAGE_URI}|g" k8s/app/deployment.yaml
+          echo "------- done pulling image------"
           kubectl apply -f k8s/app/deployment.yaml
           kubectl apply -f k8s/app/service.yaml
           kubectl rollout status deployment/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} --timeout=8m
