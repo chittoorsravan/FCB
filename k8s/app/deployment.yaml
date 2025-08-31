@@ -8,14 +8,15 @@ spec:
   strategy:
     type: Recreate
   selector:
-    matchLabels: { app: attestationhubserver }
+    matchLabels:
+      app: attestationhubserver
   template:
     metadata:
-      labels: { app: attestationhubserver }
+      labels:
+        app: attestationhubserver
     spec:
       securityContext:
-        fsGroup: 1000
-      # 👇 add this block
+        fsGroup: 1000           # so the app can write to /data
       tolerations:
         - key: "CriticalAddonsOnly"
           operator: "Exists"
@@ -23,10 +24,21 @@ spec:
       containers:
         - name: attestationhubserver
           image: 211125412565.dkr.ecr.us-east-2.amazonaws.com/fcb-attestationhub-server:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 9090
-          # (probes + resources as you already set)
+          # optional but recommended
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
       volumes:
         - name: data
           persistentVolumeClaim:
