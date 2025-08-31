@@ -109,10 +109,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Apply namespaces
+      - name: Create namespaces
         run: kubectl apply -f k8s/namespaces.yaml
 
-      # EBS CSI is an EKS add-on. We still apply SC in repo.
+      - name: Fix EBS CSI tolerations on Bottlerocket nodes
+        run: |
+          chmod +x k8s/scripts/fix-ebs-csi.sh
+          k8s/scripts/fix-ebs-csi.sh
+
       - name: Apply StorageClass (gp3)
         run: kubectl apply -f k8s/storage/sc-gp3.yaml
 
@@ -121,7 +125,24 @@ jobs:
           kubectl delete pvc attestationhub-data -n ${K8S_NAMESPACE} --ignore-not-found
           kubectl apply -f k8s/app/pvc.yaml
 
-      - name: Patch image and apply Deployment/Service
+      - name: Wait for PVC to be Bound (3m timeout)
+        run: |
+          set -e
+          END=$((SECONDS+180))
+          while [ $SECONDS -lt $END ]; do
+            PHASE=$(kubectl -n ${K8S_NAMESPACE} get pvc attestationhub-data -o jsonpath='{.status.phase}' 2>/dev/null || true)
+            if [ "$PHASE" = "Bound" ]; then
+              echo "PVC is Bound."
+              exit 0
+            fi
+            echo "Waiting for PVC attestationhub-data to be Bound..."
+            sleep 5
+          done
+          echo "PVC did not bind in time."
+          kubectl -n ${K8S_NAMESPACE} describe pvc attestationhub-data || true
+          exit 1
+
+      - name: Patch image and deploy app (Deployment + Service/NLB)
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
@@ -130,16 +151,6 @@ jobs:
           sed -i -E "s|(^[[:space:]]*image:[[:space:]]*).*$|\1${IMAGE_URI}|g" k8s/app/deployment.yaml
           kubectl apply -f k8s/app/deployment.yaml
           kubectl apply -f k8s/app/service.yaml
-
-      # === NEW: wait up to 3 minutes for the PVC to be Bound ===
-      - name: Wait for PVC to bind (3m)
-        run: |
-          echo "Waiting for PVC attestationhub-data to be Bound (timeout 3m)..."
-          kubectl -n ${K8S_NAMESPACE} wait pvc/attestationhub-data --for=condition=Bound --timeout=3m
-          echo "PVC is Bound."
-
-      - name: Wait for deployment rollout
-        run: |
           kubectl rollout status deployment/${APP_DEPLOYMENT} -n ${K8S_NAMESPACE} --timeout=8m
 
       - name: On failure dump diagnostics
@@ -190,13 +201,14 @@ jobs:
           helm repo add fluent https://fluent.github.io/helm-charts
           helm repo update
 
-      - name: Install kube-prometheus stack
+      - name: Install kube-prometheus stack (Grafana + Prometheus)
         run: |
           kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
           helm upgrade --install kps prometheus-community/kube-prometheus-stack \
             --namespace monitoring -f k8s/monitoring/kps-values.yaml
-          # Optional app metrics (if /actuator/prometheus exists)
-          if [ -f k8s/monitoring/service-monitor.yaml ]; then kubectl apply -f k8s/monitoring/service-monitor.yaml; fi
+          if [ -f k8s/monitoring/service-monitor.yaml ]; then
+            kubectl apply -f k8s/monitoring/service-monitor.yaml
+          fi
 
       - name: Install Elasticsearch, Kibana, Fluent Bit
         run: |
