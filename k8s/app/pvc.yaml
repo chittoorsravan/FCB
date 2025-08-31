@@ -5,8 +5,8 @@ metadata:
   namespace: attestationhub
 spec:
   accessModes:
-    - ReadWriteOnce
-  storageClassName: gp3
+    - ReadWriteMany
+  storageClassName: efs-sc
   resources:
     requests:
-      storage: 10Gi
+      storage: 5Gi   # logical quota for the access point; EFS is elastic
